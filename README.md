@@ -2,6 +2,8 @@
 
 Resolução do coding challenge https://codingchallenges.fyi/challenges/challenge-load-balancer
 
+**Step 1, 11 de julho**, criar um webserver que recebe uma request, envia a um backend e retorna a response ao cliente.
+
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed
