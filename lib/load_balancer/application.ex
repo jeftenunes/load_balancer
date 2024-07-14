@@ -11,7 +11,8 @@ defmodule LoadBalancer.Application do
 
     children = [
       {LoadBalancer.HttpServer, port: port},
-      {Finch, name: LoadBalancer.Finch}
+      {Finch, name: LoadBalancer.Finch},
+      LoadBalancer.HealthCheck
       # Starts a worker by calling: LoadBalancer.Worker.start_link(arg)
       # {LoadBalancer.Worker, arg}
     ]
