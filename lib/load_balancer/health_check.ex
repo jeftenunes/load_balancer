@@ -3,12 +3,17 @@ defmodule LoadBalancer.HealthCheck do
 
   require Logger
 
+  alias LoadBalancer.UnhealthyServerStore
+
   @servers Application.compile_env(:load_balancer, :servers)
   @health_check_endpoint Application.compile_env(:load_balancer, :health_check_endpoint)
-  @health_check_interval Application.compile_env(:load_balancer, :health_check_interval_in_seconds) * 1000
+  @health_check_interval Application.compile_env(
+                           :load_balancer,
+                           :health_check_interval_in_seconds
+                         ) * 1000
 
   def start_link(_opts) do
-    Task.start_link(fn -> schedule_health_check() end)
+    Task.start_link(fn -> if @health_check_endpoint != nil, do: schedule_health_check() end)
   end
 
   defp schedule_health_check() do
@@ -18,28 +23,30 @@ defmodule LoadBalancer.HealthCheck do
 
   defp execute_check(server) do
     Process.sleep(@health_check_interval)
-    case @health_check_endpoint do
-      _endpoint -> make_health_check_request(server) |> is_server_healthy?(server)
-      nil -> {:ok, :healthy, %{server: server}}
-    end
+
+    make_health_check_request(server) |> flag_server_healthy_status(server)
 
     execute_check(server)
   end
 
-  defp is_server_healthy?(health_check_response, server) do
+  defp flag_server_healthy_status(health_check_response, server) do
     case health_check_response do
-      %{status: 200} -> Logger.info("Server #{server} health status: healthy")
-      _ -> Logger.warning("Server #{server} health status: unhealthy")
+      %{status: 200} ->
+        UnhealthyServerStore.maybe_flag_healthy_server(server)
+        Logger.info("Server #{server} health status: healthy")
+
+      _ ->
+        UnhealthyServerStore.flag_unhealthy_server(server)
+        Logger.warning("Server #{server} health status: unhealthy")
     end
   end
 
   defp make_health_check_request(server) do
     {_op_status, health_check_response} =
       :get
-      |>Finch.build(
-        "#{server}#{@health_check_endpoint}"
-      )
+      |> Finch.build("#{server}#{@health_check_endpoint}")
       |> Finch.request(LoadBalancer.Finch)
+
     health_check_response
   end
 end

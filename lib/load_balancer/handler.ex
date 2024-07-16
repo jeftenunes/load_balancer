@@ -1,7 +1,5 @@
 defmodule LoadBalancer.Handler do
-  alias LoadBalancer.{Conv, Parser}
-
-  @servers Application.compile_env(:load_balancer, :servers)
+  alias LoadBalancer.{Conv, Parser, ServerStore}
 
   def handle(request) do
     request
@@ -10,13 +8,12 @@ defmodule LoadBalancer.Handler do
   end
 
   defp forward_request(%Conv{} = request) do
-    # step 1: forward request only to one server
-    server1 = List.first(@servers)
+    server = ServerStore.get_server()
 
     {:ok, finch_response} =
       Finch.build(
         request.method,
-        "#{server1}#{request.path}#{maybe_retrieve_qry_params(request.params)}"
+        "#{server}#{request.path}#{maybe_retrieve_qry_params(request.params)}"
       )
       |> Finch.request(LoadBalancer.Finch)
 
